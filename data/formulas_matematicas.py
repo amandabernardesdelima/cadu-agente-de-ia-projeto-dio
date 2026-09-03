@@ -15,7 +15,7 @@ def carregar_taxa_media(modalidade, csv_path="data/taxas_credito.csv"):
         return df_modalidade['TAXAS MÉDIAS (% a.m.)'].mean() / 100
     return df['TAXAS MÉDIAS (% a.m.)'].mean() / 100
 
-def carregar_prazo_padrao(modalidade, csv_path="data/prazos_medios_por_modalidade (1).csv"):
+def carregar_prazo_padrao(modalidade, csv_path="data/prazos_medios_por_modalidade.csv"):
     """
     Retorna o número médio de parcelas para uma modalidade.
     """
