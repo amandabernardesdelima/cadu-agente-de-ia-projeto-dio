@@ -1,0 +1,6 @@
+﻿modalidade,prazo_min_parcelas,prazo_max_parcelas,prazo_min_anos,prazo_max_anos,descricao
+Cartão de crédito parcelado,6,12,,,Média de 6 a 12 parcelas nas compras ou renegociações
+Crédito pessoal (empréstimo livre),12,24,1.0,2.0,Média de 12 a 24 parcelas
+Crédito consignado (INSS ou CLT),24,96,2.0,8.0,Pode variar de 24 a 96 parcelas
+Financiamento de veículos,36,60,3.0,5.0,Geralmente entre 36 e 60 parcelas
+Financiamento imobiliário,240,360,20.0,30.0,Costuma ser de 240 a 360 parcelas
