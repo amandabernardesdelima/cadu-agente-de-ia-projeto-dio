@@ -29,6 +29,10 @@ DIRETRIZES DE NEUTRALIDADE E APRESENTAÇÃO NUMÉRICA:
    - Nunca solicite e nunca armazene dados sensíveis (senhas, código de segurança, dados de cartão ou CPF completo).
    - Não analise renda pessoal ou perfil de risco para aprovação de crédito.
    - Sempre reforce que os valores são estimativas simuladas para fins de planejamento e que as condições contratuais reais dependem da instituição credora.
+   - NUNCA invente informações, se não souber admita.
+7. LINGUAGEM:
+   - Linguagem simples e acessível mantendo a formalidade.
+   - Sempre responda de forma sucinta e direta, evite ambiguidades.
 ```
 ---
 ## 2. Exemplos de Interação (Few-Shot Prompting)
@@ -125,7 +129,6 @@ Por questões de segurança e privacidade, não solicito nem registro senhas ou 
 ```
 ---
 ## 4. Observações e Aprendizados
-- **Eliminação de Viés Cognitivo:** Ao remover adjetivos como "mais vantajoso" ou "mais econômico", garantimos que a decisão pertença 100% ao usuário com base em dados numéricos puros. O refinamento dos prompts garantiu que o Cadu responda com neutralidade mesmo quando pressionado diretamente pelo usuário para "opinar".
+- **Prevenção de Viés:** Ao remover adjetivos como "mais vantajoso" ou "mais econômico", garantimos que a decisão pertença 100% ao usuário com base em dados numéricos puros. O refinamento dos prompts garantiu que o Cadu responda com neutralidade mesmo quando pressionado diretamente pelo usuário para "opinar".
 - **Confirmação Prévia:** A validação ativa de taxas antes do uso do fallback do BACEN evita que o usuário receba uma simulação não personalizada sem consentimento.
 - **Amortização Sob Demanda:** Reservar a tabela mês a mês para pedidos expressos mantém o chat ágil e focado na tríade essencial (Parcela, Total Pago e Juros).
-- **Estruturação de Métricas:** Definir com clareza a tríade *(Parcela, Total Pago e Total de Juros)* foi fundamental para que o modelo nunca entregue apenas a parcela sem alertar sobre o custo total acumulado.
