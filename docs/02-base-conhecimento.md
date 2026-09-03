@@ -17,7 +17,7 @@ Elaborado utilizando o **NotebookLM** como ferramenta de sintetização e curado
 4. **Caixa Econômica Federal:** [*Glossário da Macroeconomia*](https://www.caixa.gov.br/Downloads/aplicacao-financeira-fundos-investimento/Glossario-Macroeconomia-CAIXA.pdf)
 5. **FGV:** [*Setores de Regulação: Sistema Financeiro*](https://regulacaoemnumeros-direitorio.fgv.br/sistema-financeiro)
 ### B. Tabela de Taxas de Juros para Operações de Crédito (`taxas_credito.csv`)
-* **Origem:** Extraída da seção de [estatísticas de taxas de juros do Banco Central do Brasil](bcb.gov.br/estatisticas/txjuros).
+* **Origem:** Extraída da seção de [estatísticas de taxas de juros do Banco Central do Brasil](bcb.gov.br/estatisticas/txjuros) (dados do mês de agosto).
 * **Tratamento de Dados:** Os dados brutos foram limpos e formatados para simplificar a leitura computacional pelo agente, servindo como base de referência nas principais modalidades (Empréstimo Pessoal, Consignado, Veículos e Imobiliário).
 ### C. Prazos Médios por Modalidade (`prazos_medios_por_modalidade.csv`)
 * **Origem e Papel:** Tabela estruturada com o auxílio do **Google Gemini** para mapear os prazos usuais praticados pelo mercado financeiro nacional, definindo limites mínimos e máximos recomendados para quando o tomador de crédito não souber qual prazo simular.
