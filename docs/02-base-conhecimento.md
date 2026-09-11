@@ -6,7 +6,7 @@ Todos os arquivos que compõem a base de conhecimento do **Cadu** estão localiz
 | `data/glossario_termos_financeiros.csv` | CSV | Curadoria estruturada no **NotebookLM** com base em fontes oficiais (BACEN, CFP, FSA, Caixa e FGV). | Padronizar definições didáticas e acessíveis de conceitos financeiros (Price, SAC, CET, IOF, Amortização, etc.). |
 | `data/taxas_credito.csv` | CSV | **Banco Central do Brasil (BACEN).** | Fornecer taxas de juros médias de mercado para balizar simulações quando o usuário **não fornece uma taxa de juros**. |
 | `data/prazos_medios_por_modalidade.csv` | CSV | Estruturado via **Google Gemini**. | Consultar limites e médias de prazos (mínimo e máximo de parcelas) quando o usuário **não informa o prazo/quantidade de parcelas**. |
-| `data/formulas_matematicas.py` | Python | Desenvolvido com apoio do **Microsoft Copilot**. | Módulo com as fórmulas matemáticas financeiras exatas (Tabela Price, juros acumulados, amortização e simulação de entrada). |
+
 ---
 ## 2. Metodologia de Coleta e Curadoria
 ### A. Glossário de Termos Financeiros (`glossario_termos_financeiros.csv`)
@@ -22,11 +22,7 @@ Elaborado utilizando o **NotebookLM** como ferramenta de sintetização e curado
 ### C. Prazos Médios por Modalidade (`prazos_medios_por_modalidade.csv`)
 * **Origem e Papel:** Tabela estruturada com o auxílio do **Google Gemini** para mapear os prazos usuais praticados pelo mercado financeiro nacional, definindo limites mínimos e máximos recomendados para quando o tomador de crédito não souber qual prazo simular.
 ---
-## 3. Fórmulas Matemáticas (`formulas_matematicas.py`)
-Para assegurar que o agente não cometa erros aritméticos em juros compostos ou amortizações, o módulo em Python gerado com apoio do **Microsoft Copilot** encapsula as fórmulas matemáticas utilizadas na área.
-
----
-## 4. Estratégia de Integração dos Dados
+## 3. Estratégia de Integração dos Dados
 O Cadu utiliza uma **arquitetura híbrida** para responder ao usuário:
 ```mermaid
 flowchart TD
