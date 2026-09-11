@@ -65,8 +65,8 @@ flowchart TD
 | Componente | Descrição |
 |------------|-----------|
 | Interface | [Streamlit](https://streamlit.io/) |
-| LLM | Gemini |
-| Base de Conhecimento | JSON/CSV mockados na pasta `data` |
+| LLM | Ollama (local) |
+| Base de Conhecimento | CSV na pasta `data` |
 
 ## 4. Segurança, Governança e Guardrails
 1. **Neutralidade Estrita:** O Cadu não utiliza termos opinativos como "o melhor para você é...", "recomendo contratar...", "esse plano é ruim". Ele sempre expõe apenas os resultados numéricos de cada simulação, sem fazer observações que sobre os números que possam induzir o usuário a uma escolha específica.
