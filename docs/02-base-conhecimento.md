@@ -18,34 +18,31 @@ Elaborado utilizando o **NotebookLM** como ferramenta de sintetização e curado
 5. **FGV:** [*Setores de Regulação: Sistema Financeiro*](https://regulacaoemnumeros-direitorio.fgv.br/sistema-financeiro)
 ### B. Tabela de Taxas de Juros para Operações de Crédito (`taxas_credito.csv`)
 * **Origem:** Extraída da seção de [estatísticas de taxas de juros do Banco Central do Brasil](bcb.gov.br/estatisticas/txjuros) (dados do mês de agosto de 2026).
-* **Tratamento de Dados:** Os dados brutos foram limpos e formatados para simplificar a leitura computacional pelo agente, servindo como base de referência nas principais modalidades (Empréstimo Pessoal, Consignado, Veículos e Imobiliário).
+* **Tratamento e Consolidação:** Originalmente, a base do BACEN apresentava diversas taxas anuais e mensais segregadas por instituição bancária. Para otimizar a leitura computacional e prover respostas diretas e neutras, a tabela foi simplificada para conter **apenas uma taxa média mensal consolidada por modalidade** (calculada pela média das taxas praticadas pelas instituições financeiras).
 ### C. Prazos Médios por Modalidade (`prazos_medios_por_modalidade.csv`)
 * **Origem e Papel:** Tabela estruturada com o auxílio do **Google Gemini** para mapear os prazos usuais praticados pelo mercado financeiro nacional, definindo limites mínimos e máximos recomendados para quando o tomador de crédito não souber qual prazo simular.
 ---
-## 3. Estratégia de Integração dos Dados
-O Cadu utiliza uma **arquitetura híbrida** para responder ao usuário:
+## 3. Estratégia de Integração e Separação de Responsabilidades
 ```mermaid
 flowchart TD
-    User[Pergunta do Usuário] --> Agent[Agente Cadu]
+    User["Pergunta do Usuário"] --> Agent["Agente Cadu (Ollama)"]
     
-    subgraph DataFolder [Pasta data/ - Dados de Referência e Código]
-        G[glossario_termos_financeiros.csv]
-        T[taxas_credito.csv]
-        P[prazos_medios_por_modalidade.csv]
-        M[formulas_matematicas.py]
+    subgraph DataLayer ["Camada de Dados (data/)"]
+        G["glossario_termos_financeiros.csv"]
+        T["taxas_credito.csv (Taxas Consolidadas BACEN)"]
+        P["prazos_medios_por_modalidade.csv"]
     end
     
-    Agent -->|Dúvida de conceito| G
-    Agent -->|Usuário não informou taxa| T
-    Agent -->|Usuário não informou prazo| P
-    Agent -->|Execução da conta| M
+    subgraph AppLayer ["Camada de Aplicação (src/app.py)"]
+        Engine["Motor de Cálculo Determinístico em Python (Tabela Price)"]
+    end
     
-    G -->|Definição clara| Agent
-    T -->|Taxa de referência BACEN| Agent
-    P -->|Faixa de prazo sugerida| Agent
-    M -->|Parcelas e juros| Agent
+    Agent -->|Dúvida conceitual| G
+    Agent -->|Taxa referencial média| T
+    Agent -->|Prazo referencial| P
+    Engine -->|Valores numéricos exatos| Agent
     
-    Agent --> Out[Resposta Clara, Comparativa e Neutra]
+    Agent --> Out["Resposta Estruturada, Neutra e 100% Precisa"]
 ```
-1. **Injeção de Contexto (Context Injection):** Os arquivos CSV alimentam o agente com definições didáticas e valores padrão de referência (taxas e prazos de mercado).
-2. **Execução Determinística de Código (Code Execution):** Os cálculos numéricos são delegados ao módulo `formulas_matematicas.py`, garantindo precisão matemática sem alucinações.
+1. **Injeção de Contexto:** Os arquivos CSV fornecem o conhecimento de apoio e as taxas consolidadas de mercado.
+2. **Cálculo Determinístico:** O Python executa a matemática financeira analítica, eliminando alucinações aritméticas do modelo de linguagem.
