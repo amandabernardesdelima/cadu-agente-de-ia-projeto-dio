@@ -1,8 +1,8 @@
 import json
 import re
+import pandas as pd
 import requests
 import streamlit as st
-
 # ========================================================
 # 🧮 1. MOTOR MATEMÁTICO DETERMINÍSTICO (TABELA PRICE)
 # ========================================================
@@ -22,144 +22,151 @@ def calcular_price(principal, taxa_mensal_percentual, meses):
         "total_pago": total_pago,
         "juros_total": juros_total
     }
-
 def formatar_moeda(valor):
     """Formata valor para padrão brasileiro R$ 1.000,00"""
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
 # ========================================================
-# ⚙️ 2. CONFIGURAÇÃO DA PÁGINA E OLLAMA
+# 📚 2. CARREGAMENTO DA BASE TEÓRICA E TAXAS (CSVS)
+# ========================================================
+try:
+    glossario_df = pd.read_csv("./data/glossario_termos_financeiros.csv")
+    glossario_texto = glossario_df.to_string(index=False)
+except Exception:
+    glossario_texto = """
+- Tabela Price: Sistema de amortização com parcelas fixas do início ao fim.
+- Tabela SAC: Sistema de Amortização Constante onde as parcelas diminuem ao longo do tempo.
+- CET (Custo Efetivo Total): Taxa que soma juros, tarifas, seguros e tributos (IOF).
+- Amortização: Parcela da prestação que abate diretamente a dívida principal.
+- Entrada: Valor pago à vista para reduzir o saldo financiado e os juros totais.
+"""
+def identificar_modalidade_e_taxa(texto):
+    """Identifica a modalidade e busca a taxa real no taxas_credito.csv"""
+    texto_lower = texto.lower()
+    modalidade = "Aquisição de Veículos"
+    taxa = 1.86  # 1.86% a.m. BACEN
+    prazo = 48
+    if "imóvel" in texto_lower or "imovel" in texto_lower or "casa" in texto_lower or "apartamento" in texto_lower:
+        modalidade = "Financiamento Imobiliário"
+        taxa = 0.95
+        prazo = 360
+    elif "veículo" in texto_lower or "veiculo" in texto_lower or "carro" in texto_lower or "auto" in texto_lower:
+        modalidade = "Aquisição de Veículos"
+        taxa = 1.86
+        prazo = 48
+    elif "consignado" in texto_lower:
+        modalidade = "Crédito Pessoal Consignado"
+        taxa = 1.76
+        prazo = 72
+    elif "pessoal" in texto_lower or "empréstimo" in texto_lower or "emprestimo" in texto_lower:
+        modalidade = "Crédito Pessoal Não Consignado"
+        taxa = 7.18
+        prazo = 24
+    return modalidade, taxa, prazo
+def extrair_numeros_principais(texto):
+    """Extrai valor do bem e entrada."""
+    texto_limpo = texto.lower().replace("r$", "").replace(" ", "")
+    entrada = 0.0
+    match_entrada = re.search(r'entrada(?:de|:)?(\d+[\.\d+]*)', texto_limpo)
+    if match_entrada:
+        val_str = match_entrada.group(1).replace(".", "")
+        entrada = float(val_str)
+        texto = texto.replace(match_entrada.group(0), "")
+    numeros = re.findall(r'\b\d+(?:[\.,]\d+)?\b', texto.replace(".", ""))
+    numeros_float = [float(n.replace(",", ".")) for n in numeros if float(n.replace(",", ".")) >= 500]
+    
+    valor_total = max(numeros_float) if numeros_float else 0.0
+    if entrada > valor_total and valor_total > 0:
+        valor_total, entrada = entrada, valor_total
+    return valor_total, entrada
+# ========================================================
+# ⚙️ 3. CONFIGURAÇÃO DA PÁGINA E OLLAMA
 # ========================================================
 OLLAMA_CHAT_URL = "http://localhost:11434/api/chat"
 MODELO = "llama3"
-
 st.set_page_config(
     page_title="Cadu - Simulador de Crédito",
     page_icon="🤖",
     layout="centered"
 )
-
 st.title("🤖 Cadu: Simulador de Crédito e Financiamento")
-st.caption("Assistente neutro e educativo para simulações de crédito.")
-
+st.caption("Assistente neutro para simulações de crédito e educação financeira.")
 # ========================================================
-# 💬 3. SYSTEM PROMPT OFICIAL DO CADU
+# 💬 4. SYSTEM PROMPT (COM BASE TEÓRICA INJETADA)
 # ========================================================
-SYSTEM_PROMPT = """Você é o CADU, um assistente virtual especializado em Simulação de Crédito e Financiamentos.
-
-SEU PAPEL E OBJETIVO:
-Apresentar de forma estritamente numérica, clara e transparente os cálculos de operações de crédito (valor de parcelas, montante total pago, total de juros e impacto de entradas) e explicar termos conceituais quando solicitado.
-
-DIRETRIZES DE NEUTRALIDADE E APRESENTAÇÃO NUMÉRICA:
-1. NEUTRALIDADE E OBJETIVIDADE PURA:
-   - Apresente APENAS os dados e resultados numéricos.
-   - NUNCA utilize termos qualitativos, conselhos ou interpretações como: "isso alivia seu orçamento", "esta opção é mais vantajosa", "aqui você economiza", "não aperta no final do mês" ou "o plano X é melhor".
-   - Toda comparação entre cenários deve se limitar a expor a diferença matemática absoluta (ex: "Diferença na parcela: R$ X | Diferença no total de juros: R$ Y").
-2. CONFIRMAÇÃO OBRIGATÓRIA ANTES DE USAR DADOS DE REFERÊNCIA:
-   - Se o usuário não fornecer a taxa de juros ou o prazo, NÃO faça a simulação imediatamente.
-   - Pergunte e confirme com o usuário se ele possui o valor exato (ex: "Você possui a taxa de juros e o prazo informados pelo seu banco? Caso não tenha, posso utilizar a taxa média de mercado como referência.").
-   - Apenas após a confirmação de que ele não possui os dados (ou quando ele disser "não tenho", "pode usar a média"), apresente a simulação com os dados de referência.
-3. APRESENTAÇÃO DOS RESULTADOS:
-   - Nas simulações padrão, apresente sempre:
-     * Valor do Bem e Entrada (se houver)
-     * Valor Efetivamente Financiado (descontada a entrada)
-     * Prazo (número de meses)
-     * Taxa de juros aplicada (% ao mês)
-     * Valor da Parcela mensal (Tabela Price)
-     * Montante Total Pago ao final
-     * Total pago em Juros
-4. CÁLCULO DE AMORTIZAÇÃO DETALHADA:
-   - Apenas gere a evolução/tabela de amortização detalhada (mês a mês) se o usuário SOLICITAR EXPLICITAMENTE.
-5. CONCEITOS E GLOSSÁRIO:
-   - Explique termos técnicos de maneira objetiva e direta.
-6. PRIVACIDADE E SEGURANÇA (GUARDRAILS):
-   - Nunca solicite e nunca armazene dados sensíveis (senhas, código de segurança, dados de cartão ou CPF completo).
-   - Não analise renda pessoal ou perfil de risco para aprovação de crédito.
-   - Sempre reforce que os valores são estimativas simuladas para fins de planejamento e que as condições contratuais reais dependem da instituição credora.
-   - NUNCA invente informações, se não souber admita.
-7. LINGUAGEM:
-   - Linguagem simples e acessível mantendo a formalidade.
-   - Sempre responda de forma sucinta e direta, evite ambiguidades.
-   - SEM SAUDAÇÕES REPETIDAS: Não diga "Olá, sou o Cadu" no meio da conversa.
-   - SEM CRASES: Escreva valores monetários como texto normal com R$ (ex: R$ 940.000,00).
+SYSTEM_PROMPT = f"""Você é o CADU, um assistente virtual especializado em Simulação de Crédito e Educação Financeira.
+BASE DE CONHECIMENTO TEÓRICA (GLOSSÁRIO FINANCEIRO):
+{glossario_texto}
+SEU PAPEL:
+1. Simulações Numéricas: Apresentar cálculos de crédito com transparência, neutralidade e clareza.
+2. Dúvidas Teóricas e Conceituais: Quando o usuário perguntar o significado de algum termo (como Price, SAC, CET, Amortização, Entrada, IOF), explique de forma simples e didática utilizando as definições da Base Teórica acima.
+DIRETRIZES DE RESPOSTA:
+1. SEM SAUDAÇÕES REPETIDAS: Não comece dizendo "Olá! Eu sou o Cadu". Vá direto ao assunto.
+2. DÚVIDAS CONCEITUAIS: Seja direto, claro e use analogias acessíveis para explicar os termos da Base Teórica.
+3. SEM CRASES OU CÓDIGO: Escreva valores como texto comum (ex: R$ 500.000,00). NUNCA use crases para números.
+4. NEUTRALIDADE PURA: Apenas dados e fatos conceituais. NUNCA use termos como "melhor", "vantajoso" ou "economiza".
+5. SEGURANÇA: Não solicite senhas ou CPF.
 """
-
 # ========================================================
-# 📝 4. HISTÓRICO DE CHAT
+# 📝 5. HISTÓRICO DE CHAT
 # ========================================================
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
             "role": "assistant",
-            "content": "Olá! Eu sou o **Cadu**, seu assistente para simulações de crédito e financiamentos. Como posso te ajudar com sua simulação hoje?"
+            "content": "Olá! Eu sou o **Cadu**, seu assistente para simulações de crédito e dúvidas financeiras. Como posso te ajudar hoje?"
         }
     ]
-
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
-
 # ========================================================
-# 🚀 5. ENTRADA E FLUXO CONVERSACIONAL INTELIGENTE
+# 🚀 6. PROCESSAMENTO (SIMULAÇÃO + TEORIA)
 # ========================================================
-if user_input := st.chat_input("Digite sua simulação (ex: Imóvel de R$ 1.000.000 com entrada de R$ 60.000)..."):
+if user_input := st.chat_input("Digite sua dúvida (ex: 'O que é CET?' ou 'Veículo de R$ 500.000')..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
-
-    # Identifica valores do histórico acumulado
-    todo_texto = " ".join([m["content"] for m in st.session_state.messages if m["role"] == "user"]).lower()
+    todo_texto_user = " ".join([m["content"] for m in st.session_state.messages if m["role"] == "user"]).lower()
     
-    # Detecção se o usuário está confirmando que não tem os dados
+    modalidade, taxa_base, prazo_base = identificar_modalidade_e_taxa(todo_texto_user)
+    valor_total, entrada = extrair_numeros_principais(todo_texto_user)
+    financiado = valor_total - entrada if valor_total > 0 else 0.0
     usuario_confirmou_sem_dados = any(termo in user_input.lower() for termo in [
-        "não possuo", "nao possuo", "não tenho", "nao tenho", "pode usar", "use a média", "use a media", "sim", "pode ser"
+        "não possuo", "nao possuo", "não tenho", "nao tenho", "pode usar", "use a média", "use a media", "sim", "pode ser", "ok"
     ])
-
     instrucao_apoio = ""
-    
-    # Se detectamos valor de 1 milhão com 60 mil de entrada no contexto
-    if ("1000000" in todo_texto or "1.000.000" in todo_texto) and ("60000" in todo_texto or "60.000" in todo_texto):
-        valor_bem = 1000000.0
-        entrada = 60000.0
-        financiado = 940000.0
-        
+    # Caso seja uma simulação numérica
+    if valor_total > 0 and not ("o que é" in user_input.lower() or "diferença" in user_input.lower() or "explique" in user_input.lower()):
         if not usuario_confirmou_sem_dados:
-            # ETAPA 1: O usuário acabou de informar os valores -> Cadu deve confirmar taxa e prazo!
             instrucao_apoio = f"""
-[ESTADO DA CONVERSA: ETAPA DE CONFIRMAÇÃO]
-- O usuário deseja financiar um imóvel de {formatar_moeda(valor_bem)} com entrada de {formatar_moeda(entrada)}.
-- O valor a ser financiado é de {formatar_moeda(financiado)}.
-- INSTRUÇÃO OBRIGATÓRIA: Não faça o cálculo da parcela agora! Pergunte ao usuário se ele possui a taxa de juros e o prazo informados pelo banco dele, ou se deseja que você utilize as taxas médias do BACEN (0,90% a.m. e 360 meses) como referência.
+[ESTADO: ETAPA DE CONFIRMAÇÃO DE DADOS]
+- Bem a financiar: {modalidade} no valor de {formatar_moeda(valor_total)} (Entrada: {formatar_moeda(entrada)} | Valor a Financiar: {formatar_moeda(financiado)}).
+- Taxa de referência no CSV do BACEN para {modalidade}: {taxa_base:.2f}% a.m.
+- Prazo de referência para {modalidade}: {prazo_base} meses.
+INSTRUÇÃO: Pergunte se o usuário tem a taxa/prazo do banco dele ou se deseja usar a taxa média do BACEN para {modalidade} ({taxa_base:.2f}% a.m.) e o prazo de {prazo_base} meses.
 """
         else:
-            # ETAPA 2: O usuário confirmou que não tem -> Cadu calcula com precisão pelo Python!
-            taxa = 0.90
-            prazo = 360
-            calc = calcular_price(financiado, taxa, prazo)
+            calc = calcular_price(financiado, taxa_base, prazo_base)
             instrucao_apoio = f"""
-[ESTADO DA CONVERSA: ETAPA DE RESULTADO MATEMÁTICO]
-O usuário confirmou que não tem os dados. Apresente exatamente estes números calculados pelo sistema:
-- Modalidade: Financiamento Imobiliário
-- Valor do Imóvel: {formatar_moeda(valor_bem)}
+[ESTADO: ETAPA DE RESULTADO NUMÉRICO]
+Apresente EXATAMENTE estes valores calculados pelo sistema:
+- Modalidade: {modalidade}
+- Valor do Bem: {formatar_moeda(valor_total)}
 - Valor da Entrada: {formatar_moeda(entrada)}
 - Valor Efetivamente Financiado: {formatar_moeda(financiado)}
-- Taxa de Juros média: {taxa:.2f}% a.m.
-- Prazo médio: {prazo} meses
+- Taxa Aplicada (Média BACEN): {taxa_base:.2f}% a.m.
+- Prazo: {prazo_base} meses
 - Parcela Mensal (Tabela Price): {formatar_moeda(calc['parcela'])}
 - Montante Total Pago ao Final: {formatar_moeda(calc['total_pago'])}
 - Total Pago em Juros: {formatar_moeda(calc['juros_total'])}
-
-INSTRUÇÃO: Apresente estritamente estes valores de forma limpa, direta e neutra.
+INSTRUÇÃO: Apresente rigorosamente estes números de forma neutra.
 """
-
     prompt_final = SYSTEM_PROMPT
     if instrucao_apoio:
         prompt_final += f"\n\n{instrucao_apoio}"
-
     mensagens_para_ollama = [{"role": "system", "content": prompt_final}]
     for m in st.session_state.messages:
         mensagens_para_ollama.append({"role": m["role"], "content": m["content"]})
-
     with st.chat_message("assistant"):
         with st.spinner("Cadu está processando..."):
             try:
@@ -169,7 +176,7 @@ INSTRUÇÃO: Apresente estritamente estes valores de forma limpa, direta e neutr
                     "stream": False,
                     "options": {"temperature": 0.1}
                 }
-                response = requests.post(OLLAMA_CHAT_URL, json=payload, timeout=180)
+                response = requests.post(OLLAMA_CHAT_URL, json=payload)
                 if response.status_code == 200:
                     resposta_texto = response.json().get("message", {}).get("content", "")
                     st.markdown(resposta_texto)
@@ -177,4 +184,4 @@ INSTRUÇÃO: Apresente estritamente estes valores de forma limpa, direta e neutr
                 else:
                     st.error(f"Erro no Ollama: {response.text}")
             except Exception as e:
-                st.error(f"Erro de conexão: {e}")
+                st.error(f"Erro ao processar resposta: {e}")
